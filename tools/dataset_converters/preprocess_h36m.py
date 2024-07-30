@@ -4,6 +4,7 @@
 # -----------------------------------------------------------------------------
 
 import argparse
+from email.policy import default
 import os
 import pickle
 import tarfile
@@ -65,10 +66,11 @@ class PreprocessH36m:
             'train': ['S1', 'S5', 'S6', 'S7', 'S8'],
             'test': ['S9', 'S11']
         }
-        self.extract_files = ['Videos', 'D2_Positions', 'D3_Positions_mono']
+        self.extract_files = ['Videos', 'Poses_D2_Positions', 'Poses_D3_Positions_mono']
         self.movable_joints = [
-            0, 1, 2, 3, 6, 7, 8, 12, 13, 14, 15, 17, 18, 19, 25, 26, 27
+            0, 1, 2, 3, 4, 6, 7, 8, 9, 12, 13, 14, 15, 17, 18, 19, 25, 26, 27
         ]
+        self.joints_num = len(self.movable_joints)
         self.scale_factor = 1.2
         self.image_sizes = {
             '54138969': {
@@ -95,7 +97,7 @@ class PreprocessH36m:
         for subject in self.subjects_annot:
             cur_dir = join(self.original_dir, subject.lower())
             for file in self.extract_files:
-                filename = join(cur_dir, file + '.tgz')
+                filename = join(cur_dir, file + '_'+subject+'.tgz')
                 print(f'Extracting {filename} ...')
                 with tarfile.open(filename) as tar:
                     tar.extractall(self.extracted_dir)
@@ -110,7 +112,10 @@ class PreprocessH36m:
                 key = (f'S{subject}', self.camera_ids[camera])
                 cameras[key] = self._get_camera_params(camera, subject)
 
-        out_file = join(self.processed_dir, 'annotation_body3d', 'cameras.pkl')
+        out_file_path = os.path.join(self.processed_dir, 'annotation_body3d')
+        os.makedirs(out_file_path, exist_ok=True)
+        out_file = os.path.join(out_file_path,'cameras.pkl')
+
         with open(out_file, 'wb') as fout:
             pickle.dump(cameras, fout)
         print(f'Camera parameters have been written to "{out_file}".\n')
@@ -310,7 +315,7 @@ class PreprocessH36m:
         num_frames = kps_2d.shape[1]
         kps_2d = kps_2d.reshape((num_frames, 32, 2))[::self.sample_rate,
                                                      self.movable_joints]
-        kps_2d = np.concatenate([kps_2d, np.ones((len(kps_2d), 17, 1))],
+        kps_2d = np.concatenate([kps_2d, np.ones((len(kps_2d), self.joints_num, 1))],
                                 axis=2)
 
         # load 3D keypoints
@@ -322,7 +327,7 @@ class PreprocessH36m:
         kps_3d = kps_3d.reshape(
             (num_frames, 32, 3))[::self.sample_rate,
                                  self.movable_joints] / 1000.
-        kps_3d = np.concatenate([kps_3d, np.ones((len(kps_3d), 17, 1))],
+        kps_3d = np.concatenate([kps_3d, np.ones((len(kps_3d), self.joints_num, 1))],
                                 axis=2)
 
         # calculate bounding boxes
@@ -374,24 +379,24 @@ class PreprocessH36m:
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--metadata', type=str, required=True, help='Path to metadata.xml')
+        '--metadata', type=str, default='F:/h36m/metadata.xml', help='Path to metadata.xml')
     parser.add_argument(
         '--original',
         type=str,
-        required=True,
+        default='F:/h36m',
         help='Directory of the original dataset with all files compressed. '
         'Specifically, .tgz files belonging to subject 1 should be placed '
         'under the subdirectory \"s1\".')
     parser.add_argument(
         '--extracted',
         type=str,
-        default=None,
+        default='F:/Data',
         help='Directory of the extracted files. If not given, it will be '
         'placed under the same parent directory as original_dir.')
     parser.add_argument(
         '--processed',
         type=str,
-        default=None,
+        default='E:/Program Files (x86)/Visual Studio/Source/repos/A_git/mmpose/Data',
         help='Directory of the processed files. If not given, it will be '
         'placed under the same parent directory as original_dir.')
     parser.add_argument(
@@ -412,6 +417,6 @@ if __name__ == '__main__':
         extracted_dir=args.extracted,
         processed_dir=args.processed,
         sample_rate=args.sample_rate)
-    h36m.extract_tgz()
-    h36m.generate_cameras_file()
+    #h36m.extract_tgz()
+    #h36m.generate_cameras_file()
     h36m.generate_annotations()

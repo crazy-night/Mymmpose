@@ -1,5 +1,6 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import argparse
+from email.policy import default
 import os
 import os.path as osp
 
@@ -12,8 +13,8 @@ from mmengine.runner import Runner
 def parse_args():
     parser = argparse.ArgumentParser(
         description='MMPose test (and eval) model')
-    parser.add_argument('config', help='test config file path')
-    parser.add_argument('checkpoint', help='checkpoint file')
+    parser.add_argument('--config', default='configs/body_2d_keypoint/topdown_heatmap/coco/MyVitPose.py', help='test config file path')
+    parser.add_argument('--checkpoint', default='checkpoints/epoch_4.pth', help='checkpoint file')
     parser.add_argument(
         '--work-dir', help='the directory to save evaluation results')
     parser.add_argument('--out', help='the file to save metric results.')
@@ -34,6 +35,7 @@ def parse_args():
         help='directory where the visualization images will be saved.')
     parser.add_argument(
         '--show',
+        default='True',
         action='store_true',
         help='whether to display the prediction results in a window.')
     parser.add_argument(
@@ -44,7 +46,7 @@ def parse_args():
     parser.add_argument(
         '--wait-time',
         type=float,
-        default=1,
+        default=2,
         help='display time of every window. (second)')
     parser.add_argument(
         '--launcher',

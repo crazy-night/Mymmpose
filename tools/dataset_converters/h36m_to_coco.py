@@ -1,5 +1,7 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import argparse
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 import os.path as osp
 from functools import wraps
 
@@ -84,7 +86,7 @@ def _get_ann(idx, kpt_2d, kpt_3d, center, scale, imgname, camera_params):
         'iscrowd': 0,
         'bbox': bbox,
         'area': bbox[2] * bbox[3],
-        'num_keypoints': 17,
+        'num_keypoints': 19,
         'keypoints': kpt_2d.reshape(-1).tolist(),
         'keypoints_3d': kpt_3d.reshape(-1).tolist()
     }
@@ -95,13 +97,20 @@ def _get_ann(idx, kpt_2d, kpt_3d, center, scale, imgname, camera_params):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        '--ann-file', type=str, default='Data/annotation_body3d/fps10/h36m_train.npz')
+    parser.add_argument(
+        '--camera-param-file', type=str, default='Data/annotation_body3d/cameras.pkl')
+    parser.add_argument('--img-root', type=str, default='Data/images')
+    parser.add_argument(
+        '--out-file', type=str, default='Data/h36m_coco.json')
+    '''parser.add_argument(
         '--ann-file', type=str, default='tests/data/h36m/test_h36m_body3d.npz')
     parser.add_argument(
         '--camera-param-file', type=str, default='tests/data/h36m/cameras.pkl')
     parser.add_argument('--img-root', type=str, default='tests/data/h36m')
     parser.add_argument(
-        '--out-file', type=str, default='tests/data/h36m/h36m_coco.json')
-    parser.add_argument('--full-img-name', action='store_true')
+        '--out-file', type=str, default='tests/data/h36m/h36m_coco.json')'''
+    parser.add_argument('--full-img-name', default='True', action='store_true')
 
     args = parser.parse_args()
 
@@ -118,24 +127,25 @@ def main():
         'name':
         'person',
         'keypoints': [
-            'root (pelvis)', 'left_hip', 'left_knee', 'left_foot', 'right_hip',
-            'right_knee', 'right_foot', 'spine', 'thorax', 'neck_base', 'head',
-            'left_shoulder', 'left_elbow', 'left_wrist', 'right_shoulder',
-            'right_elbow', 'right_wrist'
+            'root (pelvis)', 'right_hip', 'right_knee', 'right_foot', 'right_toe', 'left_hip',
+            'left_knee', 'left_foot', 'left_toe', 'spine', 'thorax', 'neck_base', 'head',
+            'right_shoulder', 'right_elbow', 'right_wrist', 'left_shoulder',
+            'left_elbow', 'left_wrist'
         ],
-        'skeleton': [[0, 1], [1, 2], [2, 3], [0, 4], [4, 5], [5, 6], [0, 7],
-                     [7, 8], [8, 9], [9, 10], [8, 11], [11, 12], [12, 13],
-                     [8, 14], [14, 15], [15, 16]],
+        'skeleton': [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8],
+                     [0, 9], [9, 10], [10, 11], [11, 12], [10, 13], [13, 14], [14, 15],
+                     [10, 16], [16, 17], [17, 18]],
     }]
 
     # images
     imgnames = h36m_data['imgname']
     if not args.full_img_name:
         imgnames = [osp.basename(fn) for fn in imgnames]
+    imgnames = [path.replace('\\','/') for path in imgnames]
     tasks = [(idx, fn, args.img_root) for idx, fn in enumerate(imgnames)]
 
     h36m_imgs = mmengine.track_parallel_progress(
-        _get_img_info, tasks, nproc=12)
+        _get_img_info, tasks, nproc=2)
 
     # annotations
     kpts_2d = h36m_data['part']
@@ -146,7 +156,7 @@ def main():
              for idx, args in enumerate(
                  zip(kpts_2d, kpts_3d, centers, scales, imgnames))]
 
-    h36m_anns = mmengine.track_parallel_progress(_get_ann, tasks, nproc=12)
+    h36m_anns = mmengine.track_parallel_progress(_get_ann, tasks, nproc=2)
 
     # remove invalid data
     h36m_imgs = [img for img in h36m_imgs if img is not None]

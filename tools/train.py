@@ -1,5 +1,6 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import argparse
+from email.policy import default
 import os
 import os.path as osp
 
@@ -9,8 +10,8 @@ from mmengine.runner import Runner
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a pose model')
-    parser.add_argument('config', help='train config file path')
-    parser.add_argument('--work-dir', help='the dir to save logs and models')
+    parser.add_argument('--config', default='configs/body_2d_keypoint/topdown_heatmap/coco/MyVitPose.py', help='train config file path')
+    parser.add_argument('--work-dir', default='checkpoints/', help='the dir to save logs and models')
     parser.add_argument(
         '--resume',
         nargs='?',

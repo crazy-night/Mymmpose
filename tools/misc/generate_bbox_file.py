@@ -1,5 +1,6 @@
 # Copyright (c) OpenMMLab. All rights reserved.
 import argparse
+from email.policy import default
 import json
 
 import numpy as np
@@ -21,29 +22,31 @@ except ImportError:
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('det_config')
-    parser.add_argument('det_weight')
-    parser.add_argument('output', type=str)
+    parser.add_argument('--det_config', default='checkpoints/yolox_s_8x8_300e_coco.py')
+    parser.add_argument('--det_weight', default='checkpoints/yolox_s_8x8_300e_coco_20211121_095711-4592a793.pth')
+    parser.add_argument('--output', default='Data/bbox.json', type=str)
     parser.add_argument(
         '--pose-config',
         default='configs/body_2d_keypoint/topdown_heatmap/'
-        'coco/td-hm_hrnet-w32_8xb64-210e_coco-256x192.py')
-    parser.add_argument('--score-thr', default=0.1)
+        'coco/MyVitPose.py')
+    parser.add_argument('--score-thr', default=0.5)
     parser.add_argument('--nms-thr', default=0.65)
     args = parser.parse_args()
 
     register_all_modules()
-
+    
     config = Config.fromfile(args.pose_config)
     config.test_dataloader.dataset.data_mode = 'bottomup'
     config.test_dataloader.dataset.bbox_file = None
     test_set = DATASETS.build(config.test_dataloader.dataset)
     print(f'number of images: {len(test_set)}')
 
-    detector = DetInferencer(args.det_config, args.det_weight)
+    detector = DetInferencer(args.det_config, args.det_weight, device='cuda:0')
 
     new_bbox_files = []
-    for i in range(len(test_set)):
+    temp=len(test_set)
+    print(temp)
+    for i in range(temp):
         data = test_set.get_data_info(i)
         image_id = data['img_id']
         img_path = data['img_path']
